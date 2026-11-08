@@ -114,7 +114,7 @@ int main(int argc, char**argv) {
         glBindVertexArray(VAO);
         if (!ifTexture) {
             std::vector<unsigned int> sortedIndices = depthManagement.sort( object.vertices, object.indices,
-                object.modelMatrix, object.viewMatrix);
+                object.modelMatrix, object.viewMatrix, object.projectionMatrix);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
             glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sortedIndices.size() * sizeof(unsigned int), &sortedIndices[0]);
             glDrawElements(GL_TRIANGLES, sortedIndices.size(), GL_UNSIGNED_INT, 0);

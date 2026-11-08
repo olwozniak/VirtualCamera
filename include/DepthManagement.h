@@ -11,7 +11,8 @@ class DepthManagement {
 public:
     struct TriangleData {
         unsigned int originalIndices[3];
-        glm::vec3 v[3];
+        glm::vec2 v_2d[3];
+        glm::vec3 v_3d[3];
         float maxZ;
         float minZ;
         float maxX;
@@ -24,7 +25,8 @@ public:
         const std::vector<float>& vertices,
         const std::vector<unsigned int>& indices,
         const float* modelMatrix,
-        const float* viewMatrix
+        const float* viewMatrix,
+        const float* projMatrix
     );
 
     bool checkIfCrossed(glm::vec2 a, glm::vec2 b, glm::vec2 c, glm::vec2 d);

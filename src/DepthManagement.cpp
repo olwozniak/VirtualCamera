@@ -6,43 +6,37 @@
 #include <algorithm>
 
 std::vector<unsigned int> DepthManagement::sort(const std::vector<float>& vertices, const std::vector<unsigned int>& indices,
-    const float* modelMatrix, const float* viewMatrix) {
+    const float* modelMatrix, const float* viewMatrix, const float* projMatrix) {
 
     std::vector<TriangleData> triangles;
     glm::mat4 modelMat = glm::make_mat4(modelMatrix);
     glm::mat4 viewMat = glm::make_mat4(viewMatrix);
+    glm::mat4 projMat = glm::make_mat4(projMatrix);
 
-    for (int i = 0; i < indices.size(); i+=3) {
+    for (int i = 0; i < indices.size(); i += 3) {
         TriangleData tempTriangle;
         tempTriangle.originalIndices[0] = indices[i];
         tempTriangle.originalIndices[1] = indices[i+1];
         tempTriangle.originalIndices[2] = indices[i+2];
 
-        float x = vertices[tempTriangle.originalIndices[0]*3];
-        float y = vertices[tempTriangle.originalIndices[0]*3 + 1];
-        float z = vertices[tempTriangle.originalIndices[0]*3 + 2];
-        glm::vec4 localPos = glm::vec4(x, y, z, 1.0f);
-        glm::vec4 cameraPos = viewMat * modelMat * localPos;
-        tempTriangle.v[0] = glm::vec3(cameraPos);
-        x = vertices[tempTriangle.originalIndices[1]*3];
-        y = vertices[tempTriangle.originalIndices[1]*3 + 1];
-        z = vertices[tempTriangle.originalIndices[1]*3 + 2];
-        localPos = glm::vec4(x, y, z, 1.0f);
-        cameraPos = viewMat * modelMat * localPos;
-        tempTriangle.v[1] = glm::vec3(cameraPos);
-        x = vertices[tempTriangle.originalIndices[2]*3];
-        y = vertices[tempTriangle.originalIndices[2]*3 + 1];
-        z = vertices[tempTriangle.originalIndices[2]*3 + 2];
-        localPos = glm::vec4(x, y, z, 1.0f);
-        cameraPos = viewMat * modelMat * localPos;
-        tempTriangle.v[2] = glm::vec3(cameraPos);
+        for (int k = 0; k < 3; k++) {
+            float x = vertices[tempTriangle.originalIndices[k] * 3];
+            float y = vertices[tempTriangle.originalIndices[k] * 3 + 1];
+            float z = vertices[tempTriangle.originalIndices[k] * 3 + 2];
+            glm::vec4 localPos = glm::vec4(x, y, z, 1.0f);
+            glm::vec4 viewPos = viewMat * modelMat * localPos;
+            tempTriangle.v_3d[k] = glm::vec3(viewPos);
+            glm::vec4 clipPos = projMat * viewPos;
+            glm::vec3 ndcPos = glm::vec3(clipPos) / clipPos.w;
+            tempTriangle.v_2d[k] = glm::vec2(ndcPos.x, ndcPos.y);
+        }
 
-        tempTriangle.minZ = std::min({tempTriangle.v[0].z,tempTriangle.v[1].z,tempTriangle.v[2].z});
-        tempTriangle.maxZ = std::max({tempTriangle.v[0].z,tempTriangle.v[1].z,tempTriangle.v[2].z});
-        tempTriangle.minX = std::min({tempTriangle.v[0].x,tempTriangle.v[1].x,tempTriangle.v[2].x});
-        tempTriangle.maxX = std::max({tempTriangle.v[0].x,tempTriangle.v[1].x,tempTriangle.v[2].x});
-        tempTriangle.minY = std::min({tempTriangle.v[0].y,tempTriangle.v[1].y,tempTriangle.v[2].y});
-        tempTriangle.maxY = std::max({tempTriangle.v[0].y,tempTriangle.v[1].y,tempTriangle.v[2].y});
+        tempTriangle.minZ = std::min({tempTriangle.v_3d[0].z, tempTriangle.v_3d[1].z, tempTriangle.v_3d[2].z});
+        tempTriangle.maxZ = std::max({tempTriangle.v_3d[0].z, tempTriangle.v_3d[1].z, tempTriangle.v_3d[2].z});
+        tempTriangle.minX = std::min({tempTriangle.v_2d[0].x, tempTriangle.v_2d[1].x, tempTriangle.v_2d[2].x});
+        tempTriangle.maxX = std::max({tempTriangle.v_2d[0].x, tempTriangle.v_2d[1].x, tempTriangle.v_2d[2].x});
+        tempTriangle.minY = std::min({tempTriangle.v_2d[0].y, tempTriangle.v_2d[1].y, tempTriangle.v_2d[2].y});
+        tempTriangle.maxY = std::max({tempTriangle.v_2d[0].y, tempTriangle.v_2d[1].y, tempTriangle.v_2d[2].y});
 
         triangles.push_back(tempTriangle);
     }
@@ -71,15 +65,15 @@ std::vector<unsigned int> DepthManagement::sort(const std::vector<float>& vertic
                         }
                 }
                 if (!isSafe) {
-                    glm::vec3 v1 = triangles[j].v[1] - triangles[j].v[0];
-                    glm::vec3 v2 = triangles[j].v[2] - triangles[j].v[0];
+                    glm::vec3 v1 = triangles[j].v_3d[1] - triangles[j].v_3d[0];
+                    glm::vec3 v2 = triangles[j].v_3d[2] - triangles[j].v_3d[0];
                     glm::vec3 normal = glm::cross(v1, v2);
-                    if (glm::dot(normal, -triangles[j].v[0]) < 0.0f) {
+                    if (glm::dot(normal, -triangles[j].v_3d[0]) < 0.0f) {
                         normal = -normal;
                     }
                     bool isBehind = true;
                     for (int k = 0; k < 3; k++) {
-                        glm::vec3 dir = triangles[i].v[k] - triangles[j].v[0];
+                        glm::vec3 dir = triangles[i].v_3d[k] - triangles[j].v_3d[0];
                         if (glm::dot(normal, dir) > 0.0001f) {
                             isBehind = false;
                             break;
@@ -89,15 +83,15 @@ std::vector<unsigned int> DepthManagement::sort(const std::vector<float>& vertic
                 }
 
                 if (!isSafe) {
-                    glm::vec3 v3 = triangles[i].v[1] - triangles[i].v[0];
-                    glm::vec3 v4 = triangles[i].v[2] - triangles[i].v[0];
+                    glm::vec3 v3 = triangles[i].v_3d[1] - triangles[i].v_3d[0];
+                    glm::vec3 v4 = triangles[i].v_3d[2] - triangles[i].v_3d[0];
                     glm::vec3 normal2 = glm::cross(v3, v4);
-                    if (glm::dot(normal2, -triangles[i].v[0]) < 0.0f) {
+                    if (glm::dot(normal2, -triangles[i].v_3d[0]) < 0.0f) {
                         normal2 = -normal2;
                     }
                     bool isFront = true;
                     for (int k = 0; k < 3; k++) {
-                        glm::vec3 dir2 = triangles[j].v[k] - triangles[i].v[0];
+                        glm::vec3 dir2 = triangles[j].v_3d[k] - triangles[i].v_3d[0];
                         if (glm::dot(normal2, dir2) < -0.0001f) {
                             isFront = false;
                             break;
@@ -108,8 +102,8 @@ std::vector<unsigned int> DepthManagement::sort(const std::vector<float>& vertic
 
                 if (!isSafe) {
                     bool isOverlapping = false;
-                    glm::vec2 p[3] = { triangles[i].v[0], triangles[i].v[1], triangles[i].v[2] };
-                    glm::vec2 q[3] = { triangles[j].v[0], triangles[j].v[1], triangles[j].v[2] };
+                    glm::vec2 p[3] = { triangles[i].v_2d[0], triangles[i].v_2d[1], triangles[i].v_2d[2] };
+                    glm::vec2 q[3] = { triangles[j].v_2d[0], triangles[j].v_2d[1], triangles[j].v_2d[2] };
 
                     for (int k = 0; k < 3; k++) {
                         for (int l = 0; l < 3; l++) {

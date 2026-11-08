@@ -9,6 +9,7 @@
 #include <cmath>
 
 
+
 class Object {
 public:
     std::vector<float> vertices;
@@ -25,7 +26,7 @@ public:
     const float translation = 0.005f;
     float translationX = 0.0f;
     float translationY = 0.0f;
-    float translationZ = -60.0f;
+    float translationZ = -10.0f;
 
     const double PI = std::acos(-1.0);
     const float rotation = 1.0f;
